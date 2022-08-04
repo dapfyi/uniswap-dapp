@@ -1,0 +1,37 @@
+# Example to run a one-off spark script when deploying an application:
+# remove 'argocd.argoproj.io/hook: Skip' annotation to run this job.
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ .Release.Name }}-spark-metadata
+  annotations:
+    argocd.argoproj.io/hook: Skip
+spec:
+  template:
+    spec:
+      restartPolicy: Never
+      serviceAccountName: spark
+      containers:
+      - name: {{ .Release.Name }}-spark-metadata
+        # kubectl available in builder to bootstrap job
+        image: {{ .Values.global.registry }}:{{ .Release.Name }}-builder-{{ .Values.global.appVersion }}
+        imagePullPolicy: Always
+        # pass REGISTRY environment variable to submit script
+        envFrom:
+        - configMapRef:
+            name: env
+        # run uniswap/scripts/metadata.scala with minimal resources (init config)
+        command:
+        - bash
+        - -c
+        - ./submit.sh -c init uniswap script metadata
+        volumeMounts:
+        - name: submit
+          mountPath: /opt/spark/work-dir/dap/{{ .Values.path }}/spark/submit.sh
+          subPath: submit.sh
+      volumes:
+      - name: submit
+        configMap:
+          name: submit-script
+          defaultMode: 0111
+

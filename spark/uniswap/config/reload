@@ -1,0 +1,8 @@
+
+class=fyi.dap.uniswap.Swaps
+
+EXE_MEM=27g
+EXE_COR=3
+NUM_EXE=3
+DRI_MEM=512m
+
