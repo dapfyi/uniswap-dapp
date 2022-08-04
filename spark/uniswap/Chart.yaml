@@ -1,0 +1,23 @@
+apiVersion: v2
+name: uniswap
+version: 0.1.0
+dependencies:
+
+# add build profiles and spark distribution versions
+- name: profile
+  version: 0.1.0
+  repository: "@spark"
+  import-values:
+    - all
+
+# actual build jobs parameterized by profile chart
+- name: build
+  version: 0.1.0
+  repository: "@spark"
+
+# provision a kafka buffer tied to the app:
+# available at uniswap-kafka.spark.svc.cluster.local
+- name: buffer
+  version: 0.1.0
+  repository: "@spark"
+

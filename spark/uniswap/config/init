@@ -1,0 +1,6 @@
+
+DRI_MEM=512m
+EXE_MEM=2g
+NUM_EXE=1
+EXE_COR=1
+

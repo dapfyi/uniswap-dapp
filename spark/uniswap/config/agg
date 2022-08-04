@@ -1,0 +1,8 @@
+
+class=fyi.dap.uniswap.Aggregate
+
+EXE_MEM=12g
+EXE_COR=2
+NUM_EXE=1
+DRI_MEM=512m
+

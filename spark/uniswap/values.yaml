@@ -1,0 +1,21 @@
+build:
+  baseImage: sparkubi-0.1.0
+  # MVN=https://repo1.maven.org/maven2 available in builder container scope
+  extraJars:
+    - $MVN/org/apache/spark/spark-sql-kafka-0-10_2.12/3.2.0/spark-sql-kafka-0-10_2.12-3.2.0.jar
+    # spark-sql-kafka compile dependencies: underlying client is called within app to manage a buffer topic
+    - $MVN/org/apache/kafka/kafka-clients/2.8.0/kafka-clients-2.8.0.jar
+    - $MVN/org/apache/spark/spark-token-provider-kafka-0-10_2.12/3.2.0/spark-token-provider-kafka-0-10_2.12-3.2.0.jar
+    - $MVN/org/apache/spark/spark-tags_2.12/3.2.0/spark-tags_2.12-3.2.0.jar
+    - $MVN/org/apache/commons/commons-pool2/2.6.2/commons-pool2-2.6.2.jar
+    - $MVN/com/google/code/findbugs/jsr305/3.0.0/jsr305-3.0.0.jar
+  # inject bash commands in builder image build, e.g. install an extra executable
+  # do not add kubectl example below (already baked in image to submit jobs)
+  # extraCommands:
+  #   - curl -LO https://dl.k8s.io/release/v$KUBECTL_VERSION/bin/linux/amd64/kubectl
+  #   - install -o root -g root -m 0755 kubectl /usr/local/bin/kubectl && rm kubectl
+  extraCommands: []
+buffer:
+  kafkaVersion: 3.3.1
+  kafkaRelease: kafka_2.13-{{ .Values.kafkaVersion }}
+

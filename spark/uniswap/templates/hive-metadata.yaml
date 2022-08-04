@@ -1,0 +1,142 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ .Release.Name }}-hive-metadata
+spec:
+  template:
+    spec:
+      restartPolicy: Never
+      serviceAccountName: spark
+      containers:
+      - name: {{ .Release.Name }}-hive-metadata
+        image: {{ .Values.global.registry }}:metastore
+        imagePullPolicy: Always
+        # pass BUCKET environment variables to sql script
+        envFrom:
+        - configMapRef:
+            name: env
+        command:
+        - bash
+        - -c
+        - beeline -u jdbc:hive2://sparkubi-thrift.spark.svc.cluster.local:10000
+              hive hive --hivevar DELTA_BUCKET=$DELTA_BUCKET -f metadata.sql
+        volumeMounts:
+        - name: sql
+          mountPath: /opt/hive/metadata.sql
+          subPath: metadata.sql
+        - name: hive-config
+          mountPath: /opt/hive/conf/hive-site.xml
+          subPath: hive-site.xml
+      volumes:
+      - name: sql
+        configMap:
+          name: {{ .Release.Name }}-metadata-sql
+      - name: hive-config
+        configMap:
+          name: sparkubi-hive-site
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ .Release.Name }}-metadata-sql
+data:
+  metadata.sql: |
+
+    CREATE DATABASE IF NOT EXISTS {{ .Release.Name }};
+    
+    CREATE EXTERNAL TABLE IF NOT EXISTS {{ .Release.Name }}.rated_swaps
+    USING DELTA LOCATION 's3a://${DELTA_BUCKET}/{{ .Release.Name }}/rswaps';
+    
+    CREATE EXTERNAL TABLE IF NOT EXISTS {{ .Release.Name }}.day_swaps(
+        `address` STRING,
+        `pool` STRING,
+        `pair` STRING,
+        `swapCount` BIGINT,
+        `firstPrice0` DOUBLE,
+        `firstPrice1` DOUBLE,
+        `lastPrice0` DOUBLE,
+        `lastPrice1` DOUBLE,
+        `firstPriceLogId` DECIMAL(38,18),
+        `lastPriceLogId` DECIMAL(38,18),
+        `minPrice0` DOUBLE,
+        `minPrice1` DOUBLE,
+        `maxPrice0` DOUBLE,
+        `maxPrice1` DOUBLE,
+        `liquidityWeightedPrice0` DOUBLE,
+        `liquidityWeightedPrice1` DOUBLE,
+        `ttAbsPriceDeltaPct0` DOUBLE,
+        `ttAbsPriceDeltaPct1` DOUBLE,
+        `skewness0` DOUBLE,
+        `skewness1` DOUBLE,
+        `kurtosis0` DOUBLE,
+        `kurtosis1` DOUBLE,
+        `trend0` DOUBLE,
+        `trend1` DOUBLE,
+        `volume0` DOUBLE,
+        `volume1` DOUBLE,
+        `netAmount0` DOUBLE,
+        `netAmount1` DOUBLE,
+        `volumeBase` DOUBLE,
+        `volumeUsd` DOUBLE,
+        `avgVolumeBase` DOUBLE,
+        `avgVolumeUsd` DOUBLE,
+        `medVolumeBase` DOUBLE,
+        `medVolumeUsd` DOUBLE,
+        `avgTicks` DOUBLE,
+        `medTicks` DOUBLE,
+        `avgTickDepth0` DOUBLE,
+        `avgTickDepth1` DOUBLE,
+        `avgGas` DOUBLE,
+        `medGas` DOUBLE,
+        `tipQ1` DOUBLE,
+        `tipQ2` DOUBLE,
+        `tipQ3` DOUBLE,
+        `avgTotalFeePct` DOUBLE,
+        `medTotalFeePct` DOUBLE,
+        `avgTotalFeesUsd` DOUBLE,
+        `medTotalFeesUsd` DOUBLE,
+        `price0Series` ARRAY<STRUCT<
+            `logId`: DECIMAL(38,18),
+            `time`: TIMESTAMP,
+            `price`: DOUBLE,
+            `priceDeltaPct`: DOUBLE,
+            `netAmount`: DOUBLE,
+            `volume`: DOUBLE>>,
+        `price1Series` ARRAY<STRUCT<
+            `logId`: DECIMAL(38,18),
+            `time`: TIMESTAMP,
+            `price`: DOUBLE,
+            `priceDeltaPct`: DOUBLE,
+            `netAmount`: DOUBLE,
+            `volume`: DOUBLE>>,
+        `costSeries` ARRAY<STRUCT<
+            `logId`: DECIMAL(38,18),
+            `time`: TIMESTAMP,
+            `volumeUsd`: DOUBLE,
+            `gas`: BIGINT,
+            `gasXTipUsd`: DOUBLE,
+            `gasXBaseFeeUsd`: DOUBLE,
+            `LPFeeUsd`: DOUBLE,
+            `tipGwei`: DOUBLE,
+            `baseFeeGwei`: DOUBLE,
+            `totalFeePct`: DOUBLE>>,
+        `token0` STRUCT<`symbol`: STRING, `decimals`: DECIMAL(38,0), `address`: STRING>,
+        `token1` STRUCT<`symbol`: STRING, `decimals`: DECIMAL(38,0), `address`: STRING>,
+        `fee` BIGINT,
+        `isBasePool` BOOLEAN,
+        `priceDelta0` DOUBLE,
+        `priceDelta1` DOUBLE,
+        `priceDeltaPct0` DOUBLE,
+        `priceDeltaPct1` DOUBLE,
+        `priceRange0` DOUBLE,
+        `priceRange1` DOUBLE,
+        `volatility0` DOUBLE,
+        `volatility1` DOUBLE,
+        `volatility` DOUBLE,
+        `priceImpactPctFor1kUsd` DOUBLE)
+    PARTITIONED BY (`date` STRING)
+    STORED AS parquet
+    LOCATION 's3a://${DELTA_BUCKET}/{{ .Release.Name }}/agg';
+    
+    MSCK REPAIR TABLE {{ .Release.Name }}.day_swaps;
+
